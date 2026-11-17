@@ -1,0 +1,1455 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Xavfsiz Ingliz Tili Imtihon Tizimi (iOS & Android)</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        * {
+            font-family: 'Inter', sans-serif;
+            -webkit-touch-callout: none; /* iOS Safari */
+            -webkit-user-select: none;   /* Safari */
+            -khtml-user-select: none;    /* Konqueror HTML */
+            -moz-user-select: none;      /* Old versions of Firefox */
+            -ms-user-select: none;       /* Internet Explorer/Edge */
+            user-select: none;           /* Non-prefixed version */
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        html, body {
+            min-height: 100dvh;
+            padding-top: env(safe-area-inset-top, 0px);
+            padding-bottom: env(safe-area-inset-bottom, 0px);
+            overscroll-behavior-y: none;
+        }
+
+        /* Allow typing inside inputs while preventing iOS auto-zoom (must be >= 16px) */
+        input, textarea {
+            -webkit-user-select: text;
+            user-select: text;
+            font-size: 16px !important;
+        }
+
+        /* Print / PDF Screenshot block */
+        @media print {
+            body {
+                display: none !important;
+            }
+        }
+
+        /* Blur effect when window loses focus or screenshot key triggered */
+        .security-blur #app-content,
+        .security-blur #exam-header {
+            filter: blur(28px) grayscale(100%) !important;
+            pointer-events: none !important;
+            user-select: none !important;
+            transition: none !important;
+        }
+
+        /* Instant Security Blackout Curtain for Anti-Screenshot */
+        #security-curtain {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 45;
+            background: rgba(2, 6, 23, 0.98);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+        }
+
+        .security-blur #security-curtain {
+            display: flex !important;
+        }
+
+        /* Dynamic Watermark Overlay */
+        #watermark-container {
+            pointer-events: none;
+            position: fixed;
+            inset: 0;
+            z-index: 40;
+            overflow: hidden;
+            opacity: 0.065;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-around;
+            align-content: space-around;
+        }
+
+        .watermark-item {
+            transform: rotate(-28deg);
+            font-size: 0.85rem;
+            font-weight: 800;
+            color: #94a3b8;
+            white-space: nowrap;
+            padding: 1.5rem;
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-[100dvh] flex flex-col justify-between relative overflow-x-hidden selection:bg-none">
+
+    <!-- Dynamic Anti-Photo Watermark Layer -->
+    <div id="watermark-container" class="hidden"></div>
+
+    <!-- Instant Anti-Screenshot Blackout Curtain -->
+    <div id="security-curtain" class="flex-col items-center justify-center p-6 text-center">
+        <div class="w-20 h-20 rounded-full bg-rose-600/20 border-2 border-rose-500 flex items-center justify-center mb-4 text-rose-500">
+            <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path>
+            </svg>
+        </div>
+        <h2 class="text-2xl font-black text-rose-500 uppercase tracking-wider mb-2">EKRAN HIMOYALANGAN!</h2>
+        <p class="text-sm text-slate-300 max-w-xs">Skrinshot olish va imtihon oynasidan chiqish qat'iyan taqiqlanadi!</p>
+        <p id="curtain-student-stamp" class="text-xs font-mono text-rose-400/80 mt-4 border border-rose-800/60 bg-rose-950/50 px-3 py-1.5 rounded-lg"></p>
+    </div>
+
+    <!-- Top Security Bar (Visible during exam) -->
+    <header id="exam-header" class="hidden sticky top-0 z-30 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 px-3 py-2.5 shadow-lg">
+        <div class="max-w-2xl mx-auto flex flex-col gap-2">
+            <div class="flex items-center justify-between gap-1">
+                <!-- Student Info & Status -->
+                <div class="flex items-center gap-2 min-w-0">
+                    <span class="inline-flex items-center justify-center w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
+                    <div class="truncate">
+                        <p id="header-student-name" class="text-xs font-bold text-white truncate max-w-[110px] sm:max-w-[200px]">O'quvchi</p>
+                        <p id="header-student-group" class="text-[10px] text-slate-400 truncate">Guruh</p>
+                    </div>
+                </div>
+
+                <!-- Timer Box -->
+                <div id="timer-badge" class="flex items-center gap-1.5 bg-slate-800 border border-slate-700 px-2.5 py-1 rounded-xl shrink-0">
+                    <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <span id="timer-display" class="font-mono text-sm font-extrabold text-white tracking-wider">15:00</span>
+                </div>
+
+                <!-- 3-Shield / 3-Attempt Status Indicator -->
+                <div id="violation-badge" class="flex items-center gap-1.5 bg-slate-800/90 border border-slate-700 px-2.5 py-1 rounded-xl shrink-0">
+                    <div id="shields-row" class="flex items-center gap-0.5 text-sm leading-none" title="Qolgan urinishlar">
+                        <span>🛡️</span><span>🛡️</span><span>🛡️</span>
+                    </div>
+                    <span class="text-[11px] font-extrabold text-slate-200">Urinish: <span id="attempts-left" class="text-emerald-400">3</span>/3</span>
+                </div>
+            </div>
+
+            <!-- Timer & Question Progress Bar -->
+            <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                <div id="timer-progress" class="bg-indigo-500 h-full transition-all duration-500" style="width: 100%"></div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main id="app-content" class="flex-grow flex items-center justify-center p-3 sm:p-6 z-20">
+        
+        <!-- 1. START / REGISTRATION SCREEN -->
+        <section id="screen-start" class="w-full max-w-lg bg-slate-800/90 border border-slate-700/80 rounded-3xl p-5 sm:p-8 shadow-2xl">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-12 h-12 rounded-2xl bg-indigo-600/20 border border-indigo-500/40 flex items-center justify-center text-indigo-400 shrink-0">
+                    <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <span class="text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">Anti-Cheat Proctoring</span>
+                    <h1 class="text-xl sm:text-2xl font-extrabold text-white mt-0.5">Ingliz Tili Zamonlari Imtihoni</h1>
+                </div>
+            </div>
+
+            <p class="text-xs sm:text-sm text-slate-300 leading-relaxed mb-5">
+                Ushbu imtihonda <strong>10 ta o'zbekcha gapni</strong> ko'rsatilgan ingliz tili zamonlarida (Tenses) tarjima qilib yozishingiz kerak.
+            </p>
+
+            <!-- Security Rules Box -->
+            <div class="bg-amber-950/40 border border-amber-700/50 rounded-2xl p-4 mb-6">
+                <h2 class="text-xs font-extrabold uppercase tracking-wider text-amber-400 flex items-center gap-1.5 mb-2.5">
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                    </svg>
+                    Qat'iy Imtihon Qoidalari:
+                </h2>
+                <ul class="text-xs text-amber-200/90 space-y-2">
+                    <li class="flex items-start gap-2">
+                        <span class="text-amber-400 font-bold">1.</span>
+                        <span><strong>Vaqt chegarasi:</strong> Jami 15 daqiqa vaqt beriladi. Vaqt tugashi bilan javoblar avtomatik yuboriladi.</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <span class="text-amber-400 font-bold">2.</span>
+                        <span><strong>3 ta Urinish (Anti-Cheat):</strong> Imtihon oynasidan chiqish, boshqa dasturga (Telegram/Google Translate) o'tish, yuqori pardani tushirish yoki skrinshot olishga urinish darhol 1 ta urinishni kuydiradi.</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <span class="text-amber-400 font-bold">3.</span>
+                        <span><strong>Avtomatik chetlatish:</strong> 1- va 2-marta qoidabuzarlikda qat'iy ogohlantirish beriladi. <strong>3-marta qoidabuzarlik sodir bo'lishi bilan imtihondan darhol chetlatilasiz</strong> va ekran bloklanadi!</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <span class="text-amber-400 font-bold">4.</span>
+                        <span><strong>Skrinshot va Ko'chirish himoyasi:</strong> Oyna faolligi yo'qolgan soniyada ekran qoraytiriladi (skrinshotga savollar tushmaydi), Copy/Paste o'chirilgan va ekran bo'ylab ismingiz tushiriladi.</span>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Registration Inputs -->
+            <form id="start-form" class="space-y-4">
+                <div>
+                    <label for="student-name" class="block text-xs font-semibold text-slate-300 mb-1.5">O'quvchining F.I.Sh. (Ism va Familiya) *</label>
+                    <input type="text" id="student-name" required placeholder="Masalan: Aliyev Vali" autocomplete="off" autocorrect="off" spellcheck="false"
+                        class="w-full bg-slate-900/90 border border-slate-700 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 rounded-xl px-4 py-3 text-base text-white placeholder-slate-500 outline-none transition">
+                </div>
+
+                <div>
+                    <label for="student-group" class="block text-xs font-semibold text-slate-300 mb-1.5">Guruh / Sinf *</label>
+                    <input type="text" id="student-group" required placeholder="Masalan: Pre-Intermediate B2 / 9-A sinf" autocomplete="off" autocorrect="off" spellcheck="false"
+                        class="w-full bg-slate-900/90 border border-slate-700 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 rounded-xl px-4 py-3 text-base text-white placeholder-slate-500 outline-none transition">
+                </div>
+
+                <div id="start-error" class="hidden text-xs text-rose-400 bg-rose-950/50 border border-rose-800 rounded-xl p-3">
+                    Iltimos, ism-familiyangiz va guruhingizni to'liq kiriting!
+                </div>
+
+                <button type="submit"
+                    class="w-full bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 active:scale-[0.99] text-white font-bold py-3.5 px-6 rounded-2xl shadow-lg shadow-indigo-600/30 transition flex items-center justify-center gap-2 text-sm sm:text-base">
+                    <span>Qoidalarga roziman — Imtihonni Boshlash</span>
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
+                    </svg>
+                </button>
+            </form>
+        </section>
+
+        <!-- 2. EXAM WORKSPACE SCREEN -->
+        <section id="screen-exam" class="hidden w-full max-w-2xl flex flex-col gap-4">
+            
+            <!-- Question Navigation Pills -->
+            <div class="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-3">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-semibold text-slate-400">Savollar xaritasi (10 ta gap):</span>
+                    <span id="answered-counter" class="text-xs font-bold text-indigo-400">Javob yozildi: 0 / 10</span>
+                </div>
+                <div id="question-pills" class="grid grid-cols-5 sm:grid-cols-10 gap-1.5">
+                    <!-- Dynamically populated 1..10 pills -->
+                </div>
+            </div>
+
+            <!-- Active Question Card -->
+            <div class="bg-slate-800/95 border border-slate-700 rounded-3xl p-5 sm:p-7 shadow-xl relative overflow-hidden">
+                <!-- Question Header & Tense Badge -->
+                <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+                    <span id="q-number-badge" class="text-xs font-extrabold uppercase tracking-wider px-3 py-1 rounded-xl bg-slate-700 text-slate-200">
+                        1-SAVOL / 10
+                    </span>
+                    <span id="q-tense-badge" class="text-xs font-bold px-3 py-1 rounded-xl bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                        Present Simple
+                    </span>
+                </div>
+
+                <!-- Uzbek Sentence to Translate -->
+                <div class="bg-slate-900/90 border border-slate-700/80 rounded-2xl p-4 sm:p-5 mb-4">
+                    <p class="text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">O'zbekcha gapni ingliz tiliga tarjima qiling:</p>
+                    <h2 id="q-uzbek-text" class="text-base sm:text-xl font-bold text-white leading-snug">
+                        Men har kuni ertalab soat 7 da uyg'onaman.
+                    </h2>
+                    <p id="q-hint-text" class="text-xs text-indigo-300/80 mt-2.5 flex items-center gap-1.5">
+                        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <span id="q-vocab-hint">Lug'at yordam: wake up (uyg'onmoq), every morning (har kuni ertalab)</span>
+                    </p>
+                </div>
+
+                <!-- Answer Input Box (Copy/Paste & Keyboard Suggestions Disabled) -->
+                <div class="mb-5">
+                    <div class="flex items-center justify-between mb-1.5">
+                        <label for="answer-input" class="text-xs font-semibold text-slate-300">Inglizcha tarjimangizni yozing:</label>
+                        <span class="text-[11px] text-slate-400">Copy/Paste va Avto-to'g'rilash o'chirilgan</span>
+                    </div>
+                    <textarea id="answer-input" rows="3"
+                        placeholder="Type your English translation here..."
+                        autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" data-gramm="false"
+                        class="w-full bg-slate-900 border-2 border-slate-700 focus:border-indigo-500 rounded-2xl p-3.5 text-base text-white placeholder-slate-500 outline-none transition resize-none font-medium"></textarea>
+                </div>
+
+                <!-- Navigation Buttons -->
+                <div class="flex items-center justify-between gap-3 pt-2 border-t border-slate-700/70">
+                    <button type="button" id="btn-prev"
+                        class="flex-1 sm:flex-initial bg-slate-700 hover:bg-slate-600 disabled:opacity-40 disabled:pointer-events-none text-white font-semibold py-3 px-5 rounded-xl text-sm transition flex items-center justify-center gap-1.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                        </svg>
+                        <span>Oldingi</span>
+                    </button>
+
+                    <button type="button" id="btn-next"
+                        class="flex-1 sm:flex-initial bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 px-6 rounded-xl text-sm shadow-lg shadow-indigo-600/20 transition flex items-center justify-center gap-1.5">
+                        <span>Keyingi</span>
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                        </svg>
+                    </button>
+
+                    <button type="button" id="btn-finish-Trigger"
+                        class="hidden flex-1 sm:flex-initial bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-6 rounded-xl text-sm shadow-lg shadow-emerald-600/25 transition items-center justify-center gap-1.5">
+                        <span>Yakunlash va Topshirish</span>
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Quick Submit Bar -->
+            <div class="flex items-center justify-between bg-slate-800/60 border border-slate-700/60 rounded-2xl px-4 py-3">
+                <span class="text-xs text-slate-400">Barcha gaplarni yozib bo'ldingizmi?</span>
+                <button type="button" id="btn-early-submit" class="text-xs font-bold text-emerald-400 hover:text-emerald-300 underline">
+                    Imtihonni muddatidan oldin topshirish
+                </button>
+            </div>
+        </section>
+
+        <!-- 3. RESULTS & VERIFICATION SCREEN -->
+        <section id="screen-result" class="hidden w-full max-w-2xl bg-slate-800/95 border border-slate-700 rounded-3xl p-5 sm:p-8 shadow-2xl">
+            <div class="text-center border-b border-slate-700 pb-5 mb-5">
+                <div id="result-status-badge" class="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-extrabold uppercase tracking-wider mb-3">
+                    <!-- Dynamic Status -->
+                </div>
+                <h1 class="text-2xl sm:text-3xl font-extrabold text-white">Imtihon Natijasi</h1>
+                <p id="result-timestamp" class="text-xs text-slate-400 mt-1"></p>
+            </div>
+
+            <!-- Student & Proctoring Summary Grid -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3 mb-6">
+                <div class="bg-slate-900/90 border border-slate-700/80 p-3 rounded-2xl">
+                    <p class="text-[10px] uppercase text-slate-400 font-semibold">O'quvchi</p>
+                    <p id="res-name" class="text-sm font-bold text-white truncate mt-0.5">-</p>
+                    <p id="res-group" class="text-[11px] text-indigo-400 truncate">-</p>
+                </div>
+                <div class="bg-slate-900/90 border border-slate-700/80 p-3 rounded-2xl">
+                    <p class="text-[10px] uppercase text-slate-400 font-semibold">To'g'ri javoblar</p>
+                    <p id="res-score" class="text-xl font-extrabold text-emerald-400 mt-0.5">0 / 10</p>
+                    <p id="res-percent" class="text-[11px] text-slate-400">0%</p>
+                </div>
+                <div class="bg-slate-900/90 border border-slate-700/80 p-3 rounded-2xl">
+                    <p class="text-[10px] uppercase text-slate-400 font-semibold">Sarflangan vaqt</p>
+                    <p id="res-time" class="text-base font-bold text-white mt-0.5">00:00</p>
+                    <p class="text-[11px] text-slate-400">Limit: 15:00</p>
+                </div>
+                <div class="bg-slate-900/90 border border-slate-700/80 p-3 rounded-2xl">
+                    <p class="text-[10px] uppercase text-slate-400 font-semibold">Qoidabuzarlik</p>
+                    <p id="res-violations" class="text-base font-extrabold text-rose-400 mt-0.5">0 marta</p>
+                    <p id="res-security-code" class="text-[10px] font-mono text-slate-400">KOD: ----</p>
+                </div>
+            </div>
+
+            <!-- Copy & Share Report Buttons for Teacher (iOS & Android Friendly) -->
+            <div class="mb-6 flex flex-col sm:flex-row gap-3">
+                <button type="button" id="btn-copy-report"
+                    class="flex-1 bg-indigo-600 hover:bg-indigo-500 active:scale-[0.99] text-white font-bold py-3.5 px-5 rounded-2xl shadow-lg shadow-indigo-600/25 transition flex items-center justify-center gap-2 text-sm">
+                    <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path>
+                    </svg>
+                    <span id="copy-btn-text">Telegram uchun natijani nusxalash</span>
+                </button>
+
+                <button type="button" id="btn-share-report"
+                    class="flex-1 bg-emerald-600 hover:bg-emerald-500 active:scale-[0.99] text-white font-bold py-3.5 px-5 rounded-2xl shadow-lg shadow-emerald-600/25 transition flex items-center justify-center gap-2 text-sm">
+                    <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path>
+                    </svg>
+                    <span>Telegram / WhatsApp orqali ulashish</span>
+                </button>
+            </div>
+
+            <!-- Violation Log (if any) -->
+            <div id="violation-log-box" class="hidden bg-rose-950/40 border border-rose-800/70 rounded-2xl p-4 mb-6">
+                <h3 class="text-xs font-extrabold uppercase tracking-wider text-rose-300 mb-2">Xavfsizlik Jurnali (Aniqlangan harakatlar):</h3>
+                <ul id="violation-log-list" class="text-xs text-rose-200/90 space-y-1 font-mono"></ul>
+            </div>
+
+            <!-- Detailed Question-by-Question Review -->
+            <div>
+                <h3 class="text-sm font-bold text-slate-200 mb-3">Batafsil tahlil (10 ta gap):</h3>
+                <div id="results-breakdown" class="space-y-3 max-h-[420px] overflow-y-auto pr-1">
+                    <!-- Dynamically populated breakdown -->
+                </div>
+            </div>
+
+            <!-- Teacher Reset / Unlock Control -->
+            <div class="mt-6 pt-5 border-t border-slate-700/80 flex flex-col sm:flex-row items-center justify-between gap-3">
+                <p class="text-[11px] text-slate-400 text-center sm:text-left">
+                    🔒 Qayta kirish bloklangan. Yangi urinish faqat ustoz ruxsati bilan ochiladi.
+                </p>
+                <button type="button" id="btn-teacher-reset"
+                    class="text-xs font-bold text-slate-300 hover:text-white bg-slate-900 hover:bg-slate-700 border border-slate-700 px-3.5 py-2 rounded-xl transition shrink-0">
+                    🔑 Ustoz uchun qayta ochish (PIN: 2026)
+                </button>
+            </div>
+
+            <!-- Inline Teacher PIN Box -->
+            <div id="teacher-pin-box" class="hidden mt-3 bg-slate-900 border border-slate-700 rounded-2xl p-3.5 flex items-center gap-2">
+                <input type="password" id="teacher-pin-input" inputmode="numeric" placeholder="Ustoz PIN kodi (2026 yoki 0000)"
+                    class="flex-1 bg-slate-800 border border-slate-600 rounded-xl px-3 py-2 text-base text-white outline-none">
+                <button type="button" id="btn-verify-pin"
+                    class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition">
+                    Qulfni ochish
+                </button>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- SECURITY WARNING MODAL (Anti-Cheat Alert 1/3 and 2/3) -->
+    <div id="modal-violation" class="hidden fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-2xl flex items-center justify-center p-4">
+        <div class="w-full max-w-md bg-slate-900 border-2 border-rose-600 rounded-3xl p-6 text-center shadow-2xl">
+            <div class="w-16 h-16 rounded-full bg-rose-600/20 border-2 border-rose-500 flex items-center justify-center mx-auto mb-3 text-rose-500 animate-bounce">
+                <svg class="w-9 h-9" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                </svg>
+            </div>
+            <span id="modal-strike-pill" class="inline-block text-[11px] font-black uppercase tracking-widest px-3 py-1 rounded-full bg-rose-600 text-white mb-2">
+                OGOHLANTIRISH 1 / 3
+            </span>
+            <h2 class="text-xl font-extrabold text-white mb-2">DIQQAT! QOIDABUZARLIK!</h2>
+            <p id="modal-violation-reason" class="text-sm text-rose-300 font-medium mb-4">
+                Siz imtihon oynasidan chiqdingiz yoki skrinshot olishga urindingiz!
+            </p>
+            <div class="bg-rose-950/70 border border-rose-800 rounded-2xl p-3.5 mb-5">
+                <div class="flex items-center justify-center gap-3 mb-2" id="modal-shields-visual">
+                    <!-- Dynamic shields -->
+                </div>
+                <p id="modal-violation-counter" class="text-lg font-black text-rose-400">Qolgan imkoniyat: 2 ta</p>
+                <p class="text-[11px] text-rose-200/90 mt-1">
+                    Imtihondan chiqish yoki skrinshot olish qat'iyan man etiladi. 3-ogohlantirishda imtihondan darhol chetlatilasiz!
+                </p>
+            </div>
+            <button type="button" id="btn-return-exam"
+                class="w-full bg-rose-600 hover:bg-rose-500 active:scale-[0.99] text-white font-bold py-3.5 px-6 rounded-2xl shadow-lg shadow-rose-600/30 transition text-sm">
+                Tushundim, davom etish
+            </button>
+        </div>
+    </div>
+
+    <!-- CONFIRM SUBMIT MODAL (Replaces native confirm()) -->
+    <div id="modal-confirm-submit" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+        <div class="w-full max-w-sm bg-slate-800 border border-slate-700 rounded-3xl p-6 text-center shadow-2xl">
+            <h3 class="text-lg font-extrabold text-white mb-2">Imtihonni yakunlaysizmi?</h3>
+            <p id="confirm-submit-text" class="text-xs text-slate-300 mb-5 leading-relaxed">
+                Javoblaringiz tekshirilib, natijalar oynasiga o'tiladi. Qayta o'zgartirib bo'lmaydi.
+            </p>
+            <div class="flex items-center gap-3">
+                <button type="button" id="btn-cancel-submit"
+                    class="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-semibold py-3 rounded-xl text-xs transition">
+                    Orqaga qaytish
+                </button>
+                <button type="button" id="btn-confirm-submit"
+                    class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl text-xs shadow-lg shadow-emerald-600/25 transition">
+                    Ha, Topshiraman
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="hidden fixed bottom-5 left-1/2 -translate-x-1/2 z-50 bg-slate-900 border border-indigo-500 text-white px-4 py-2.5 rounded-2xl shadow-2xl text-xs font-semibold">
+        Xabar
+    </div>
+
+    <script>
+        /**************************************************************
+         * 1. EXAM QUESTIONS DATA (10 Core English Tenses: Uzbek -> English)
+         **************************************************************/
+        const EXAM_QUESTIONS = [
+            {
+                id: 1,
+                tense: "1. Present Simple (Hozirgi oddiy zamon)",
+                uzbek: "Men har kuni ertalab soat 7 da uyg'onaman.",
+                hint: "wake up / get up (uyg'onmoq), at 7 o'clock (soat 7 da), every morning (har kuni ertalab)",
+                reference: "I wake up at 7 o'clock every morning.",
+                accepted: [
+                    "i wake up at 7 oclock every morning",
+                    "i wake up at 7 every morning",
+                    "i wake up at seven oclock every morning",
+                    "i wake up at 7 am every morning",
+                    "every morning i wake up at 7 oclock",
+                    "every morning i wake up at 7",
+                    "i get up at 7 oclock every morning",
+                    "i get up at 7 every morning",
+                    "i get up at 7 am every morning"
+                ]
+            },
+            {
+                id: 2,
+                tense: "2. Present Continuous (Hozirgi davomli zamon)",
+                uzbek: "Ular ayni damda ingliz tilini o'rganishyapti.",
+                hint: "learn / study (o'rganmoq), English (ingliz tili), right now / at the moment (ayni damda)",
+                reference: "They are learning English right now.",
+                accepted: [
+                    "they are learning english right now",
+                    "they are studying english right now",
+                    "they are learning english at the moment",
+                    "they are studying english at the moment",
+                    "they are learning english now",
+                    "they are studying english now"
+                ]
+            },
+            {
+                id: 3,
+                tense: "3. Past Simple (O'tgan oddiy zamon)",
+                uzbek: "Biz kecha yangi film tomosha qildik.",
+                hint: "watch / see (tomosha qilmoq), a new movie / film (yangi film), yesterday (kecha)",
+                reference: "We watched a new movie yesterday.",
+                accepted: [
+                    "we watched a new movie yesterday",
+                    "we watched a new film yesterday",
+                    "yesterday we watched a new movie",
+                    "yesterday we watched a new film",
+                    "we saw a new movie yesterday",
+                    "we saw a new film yesterday"
+                ]
+            },
+            {
+                id: 4,
+                tense: "4. Past Continuous (O'tgan davomli zamon)",
+                uzbek: "Men kecha soat 5 da kitob o'qiyotgan edim.",
+                hint: "read a book (kitob o'qimoq), at 5 o'clock yesterday (kecha soat 5 da)",
+                reference: "I was reading a book at 5 o'clock yesterday.",
+                accepted: [
+                    "i was reading a book at 5 oclock yesterday",
+                    "i was reading a book yesterday at 5 oclock",
+                    "i was reading a book at 5 yesterday",
+                    "i was reading a book yesterday at 5",
+                    "yesterday at 5 oclock i was reading a book",
+                    "yesterday at 5 i was reading a book"
+                ]
+            },
+            {
+                id: 5,
+                tense: "5. Present Perfect (Hozirgi tugallangan zamon)",
+                uzbek: "U uy vazifasini allaqachon bajarib bo'ldi.",
+                hint: "he / she, already (allaqachon), do / finish (bajarmoq), his / her homework (uy vazifasini)",
+                reference: "He has already done his homework.",
+                accepted: [
+                    "he has already done his homework",
+                    "she has already done her homework",
+                    "he has already finished his homework",
+                    "she has already finished her homework",
+                    "he has done his homework already",
+                    "she has done her homework already",
+                    "he has finished his homework already",
+                    "she has finished her homework already"
+                ]
+            },
+            {
+                id: 6,
+                tense: "6. Present Perfect Continuous (Hozirgi tugallangan davomli)",
+                uzbek: "Men ikki yildan beri ingliz tilini o'rganib kelyapman.",
+                hint: "learn / study (o'rganmoq), English (ingliz tili), for two years (ikki yildan beri)",
+                reference: "I have been learning English for two years.",
+                accepted: [
+                    "i have been learning english for two years",
+                    "i have been learning english for 2 years",
+                    "i have been studying english for two years",
+                    "i have been studying english for 2 years"
+                ]
+            },
+            {
+                id: 7,
+                tense: "7. Past Perfect (O'tgan tugallangan zamon)",
+                uzbek: "Men vokzalga yetib borganimda, poyezd jo'nab ketgan edi.",
+                hint: "arrive at / reach (yetib bormoq), the station (vokzal), the train (poyezd), leave (jo'nab ketmoq)",
+                reference: "When I arrived at the station, the train had left.",
+                accepted: [
+                    "when i arrived at the station the train had left",
+                    "when i reached the station the train had left",
+                    "the train had left when i arrived at the station",
+                    "the train had already left when i arrived at the station",
+                    "when i arrived at the station the train had already left",
+                    "when i got to the station the train had left",
+                    "the train had left when i got to the station"
+                ]
+            },
+            {
+                id: 8,
+                tense: "8. Future Simple — Will (Kelasi oddiy zamon)",
+                uzbek: "Men ertaga do'stimga yordam beraman.",
+                hint: "help (yordam bermoq), my friend (do'stimga), tomorrow (ertaga)",
+                reference: "I will help my friend tomorrow.",
+                accepted: [
+                    "i will help my friend tomorrow",
+                    "tomorrow i will help my friend",
+                    "i shall help my friend tomorrow"
+                ]
+            },
+            {
+                id: 9,
+                tense: "9. Be going to (Rejalashtirilgan kelasi zamon)",
+                uzbek: "Biz kelasi oyda yangi mashina sotib olmoqchimiz.",
+                hint: "buy (sotib olmoq), a new car (yangi mashina), next month (kelasi oyda)",
+                reference: "We are going to buy a new car next month.",
+                accepted: [
+                    "we are going to buy a new car next month",
+                    "next month we are going to buy a new car",
+                    "we are going to purchase a new car next month"
+                ]
+            },
+            {
+                id: 10,
+                tense: "10. Future Continuous (Kelasi davomli zamon)",
+                uzbek: "Ertaga shu paytda men Londonga uchayotgan bo'laman.",
+                hint: "this time tomorrow (ertaga shu paytda), fly to London (Londonga uchmoq)",
+                reference: "This time tomorrow I will be flying to London.",
+                accepted: [
+                    "this time tomorrow i will be flying to london",
+                    "i will be flying to london this time tomorrow",
+                    "tomorrow at this time i will be flying to london",
+                    "i will be flying to london at this time tomorrow"
+                ]
+            }
+        ];
+
+        /**************************************************************
+         * 2. APPLICATION STATE & STORAGE KEY
+         **************************************************************/
+        const TOTAL_TIME_SECONDS = 15 * 60; // 15 minutes
+        const MAX_VIOLATIONS = 3;
+        const STORAGE_KEY = "uz_english_exam_lock_v2";
+
+        let state = {
+            studentName: "",
+            studentGroup: "",
+            examActive: false,
+            examFinished: false,
+            disqualified: false,
+            currentIndex: 0,
+            answers: Array(EXAM_QUESTIONS.length).fill(""),
+            remainingSeconds: TOTAL_TIME_SECONDS,
+            timerInterval: null,
+            violations: 0,
+            violationLogs: [],
+            lastViolationTimestamp: 0,
+            finishReason: "O'quvchi o'zi yakunladi"
+        };
+
+        /**************************************************************
+         * 3. DOM ELEMENTS
+         **************************************************************/
+        const elHeader = document.getElementById("exam-header");
+        const elWatermark = document.getElementById("watermark-container");
+        const elCurtainStamp = document.getElementById("curtain-student-stamp");
+        const elScreenStart = document.getElementById("screen-start");
+        const elScreenExam = document.getElementById("screen-exam");
+        const elScreenResult = document.getElementById("screen-result");
+
+        const elStartForm = document.getElementById("start-form");
+        const elNameInput = document.getElementById("student-name");
+        const elGroupInput = document.getElementById("student-group");
+        const elStartError = document.getElementById("start-error");
+
+        const elHeaderName = document.getElementById("header-student-name");
+        const elHeaderGroup = document.getElementById("header-student-group");
+        const elTimerDisplay = document.getElementById("timer-display");
+        const elTimerBadge = document.getElementById("timer-badge");
+        const elTimerProgress = document.getElementById("timer-progress");
+        const elShieldsRow = document.getElementById("shields-row");
+        const elAttemptsLeft = document.getElementById("attempts-left");
+        const elViolationBadge = document.getElementById("violation-badge");
+
+        const elQuestionPills = document.getElementById("question-pills");
+        const elAnsweredCounter = document.getElementById("answered-counter");
+        const elQNumberBadge = document.getElementById("q-number-badge");
+        const elQTenseBadge = document.getElementById("q-tense-badge");
+        const elQUzbekText = document.getElementById("q-uzbek-text");
+        const elQVocabHint = document.getElementById("q-vocab-hint");
+        const elAnswerInput = document.getElementById("answer-input");
+
+        const elBtnPrev = document.getElementById("btn-prev");
+        const elBtnNext = document.getElementById("btn-next");
+        const elBtnFinishTrigger = document.getElementById("btn-finish-Trigger");
+        const elBtnEarlySubmit = document.getElementById("btn-early-submit");
+
+        const elModalViolation = document.getElementById("modal-violation");
+        const elModalStrikePill = document.getElementById("modal-strike-pill");
+        const elModalViolationReason = document.getElementById("modal-violation-reason");
+        const elModalShieldsVisual = document.getElementById("modal-shields-visual");
+        const elModalViolationCounter = document.getElementById("modal-violation-counter");
+        const elBtnReturnExam = document.getElementById("btn-return-exam");
+
+        const elModalConfirm = document.getElementById("modal-confirm-submit");
+        const elConfirmText = document.getElementById("confirm-submit-text");
+        const elBtnCancelSubmit = document.getElementById("btn-cancel-submit");
+        const elBtnConfirmSubmit = document.getElementById("btn-confirm-submit");
+
+        const elToast = document.getElementById("toast");
+
+        /**************************************************************
+         * 4. WEB AUDIO API SIREN & ALARM (Zero External Dependencies)
+         **************************************************************/
+        let audioCtx = null;
+
+        function initAudioContext() {
+            try {
+                if (!audioCtx) {
+                    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                    if (AudioContextClass) {
+                        audioCtx = new AudioContextClass();
+                    }
+                }
+                if (audioCtx && audioCtx.state === "suspended") {
+                    audioCtx.resume();
+                }
+            } catch (e) {}
+        }
+
+        function playWarningSound(isExpulsion = false) {
+            try {
+                initAudioContext();
+                if (!audioCtx) return;
+
+                const now = audioCtx.currentTime;
+                if (!isExpulsion) {
+                    // Two sharp warning beeps for Strike 1 & Strike 2
+                    [0, 0.18].forEach((offset, i) => {
+                        const osc = audioCtx.createOscillator();
+                        const gain = audioCtx.createGain();
+                        osc.type = "sawtooth";
+                        osc.frequency.setValueAtTime(i === 0 ? 880 : 620, now + offset);
+                        gain.gain.setValueAtTime(0.25, now + offset);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.14);
+                        osc.connect(gain);
+                        gain.connect(audioCtx.destination);
+                        osc.start(now + offset);
+                        osc.stop(now + offset + 0.15);
+                    });
+                } else {
+                    // Long Disqualification Alarm Siren on Strike 3
+                    [0, 0.22, 0.44, 0.66].forEach((offset, idx) => {
+                        const osc = audioCtx.createOscillator();
+                        const gain = audioCtx.createGain();
+                        osc.type = "square";
+                        osc.frequency.setValueAtTime(idx % 2 === 0 ? 920 : 480, now + offset);
+                        gain.gain.setValueAtTime(0.3, now + offset);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.2);
+                        osc.connect(gain);
+                        gain.connect(audioCtx.destination);
+                        osc.start(now + offset);
+                        osc.stop(now + offset + 0.21);
+                    });
+                }
+            } catch (err) {}
+        }
+
+        function showToast(msg) {
+            elToast.textContent = msg;
+            elToast.classList.remove("hidden");
+            setTimeout(() => {
+                elToast.classList.add("hidden");
+            }, 2600);
+        }
+
+        /**************************************************************
+         * 5. NORMALIZATION & SMART ANSWER CHECKER
+         **************************************************************/
+        function normalizeEnglish(str) {
+            if (!str) return "";
+            let s = str.toLowerCase().trim();
+
+            // Expand common English contractions so both forms are accepted
+            s = s.replace(/[\u2018\u2019\u201B`']/g, "'");
+            s = s.replace(/\bi'm\b/g, "i am");
+            s = s.replace(/\byou're\b/g, "you are");
+            s = s.replace(/\bwe're\b/g, "we are");
+            s = s.replace(/\bthey're\b/g, "they are");
+            s = s.replace(/\bhe's\b/g, "he has");
+            s = s.replace(/\bshe's\b/g, "she has");
+            s = s.replace(/\bi've\b/g, "i have");
+            s = s.replace(/\byou've\b/g, "you have");
+            s = s.replace(/\bwe've\b/g, "we have");
+            s = s.replace(/\bthey've\b/g, "they have");
+            s = s.replace(/\bi'll\b/g, "i will");
+            s = s.replace(/\byou'll\b/g, "you will");
+            s = s.replace(/\bhe'll\b/g, "he will");
+            s = s.replace(/\bshe'll\b/g, "she will");
+            s = s.replace(/\bwe'll\b/g, "we will");
+            s = s.replace(/\bthey'll\b/g, "they will");
+            s = s.replace(/\bi'd\b/g, "i had");
+            s = s.replace(/\bhadn't\b/g, "had not");
+            s = s.replace(/\bdon't\b/g, "do not");
+            s = s.replace(/\bdoesn't\b/g, "does not");
+            s = s.replace(/\bdidn't\b/g, "did not");
+            s = s.replace(/\bwon't\b/g, "will not");
+            s = s.replace(/\bhaven't\b/g, "have not");
+            s = s.replace(/\bhasn't\b/g, "has not");
+            s = s.replace(/\bisn't\b/g, "is not");
+            s = s.replace(/\baren't\b/g, "are not");
+            s = s.replace(/\bwasn't\b/g, "was not");
+            s = s.replace(/\bweren't\b/g, "were not");
+            s = s.replace(/\bo'clock\b/g, "oclock");
+
+            // Remove punctuation (. , ? ! ' ")
+            s = s.replace(/[.,?!'"]/g, "");
+            // Collapse multiple spaces
+            s = s.replace(/\s+/g, " ").trim();
+            return s;
+        }
+
+        function isAnswerCorrect(questionObj, rawStudentAnswer) {
+            const normStudent = normalizeEnglish(rawStudentAnswer);
+            if (!normStudent) return false;
+            return questionObj.accepted.some(acc => normalizeEnglish(acc) === normStudent);
+        }
+
+        /**************************************************************
+         * 6. WATERMARK & SHIELD UI GENERATOR
+         **************************************************************/
+        function renderWatermark() {
+            elWatermark.innerHTML = "";
+            elWatermark.classList.remove("hidden");
+            const timeLabel = new Date().toLocaleTimeString("uz-UZ", { hour: "2-digit", minute: "2-digit" });
+            const stampText = `${state.studentName} • ${state.studentGroup} • ${timeLabel}`;
+            elCurtainStamp.textContent = stampText;
+            for (let i = 0; i < 28; i++) {
+                const div = document.createElement("div");
+                div.className = "watermark-item";
+                div.textContent = stampText;
+                elWatermark.appendChild(div);
+            }
+        }
+
+        function updateShieldsHeader() {
+            const left = Math.max(0, MAX_VIOLATIONS - state.violations);
+            elAttemptsLeft.textContent = left;
+
+            let shieldsHtml = "";
+            for (let i = 0; i < MAX_VIOLATIONS; i++) {
+                if (i < left) {
+                    shieldsHtml += `<span class="opacity-100">🛡️</span>`;
+                } else {
+                    shieldsHtml += `<span class="opacity-40 grayscale">💥</span>`;
+                }
+            }
+            elShieldsRow.innerHTML = shieldsHtml;
+
+            if (left === 2) {
+                elAttemptsLeft.className = "text-amber-400 font-extrabold";
+                elViolationBadge.className = "flex items-center gap-1.5 bg-amber-950/80 border border-amber-600/70 px-2.5 py-1 rounded-xl shrink-0";
+            } else if (left <= 1) {
+                elAttemptsLeft.className = "text-rose-400 font-extrabold animate-pulse";
+                elViolationBadge.className = "flex items-center gap-1.5 bg-rose-950/90 border border-rose-500 px-2.5 py-1 rounded-xl shrink-0";
+            } else {
+                elAttemptsLeft.className = "text-emerald-400 font-extrabold";
+                elViolationBadge.className = "flex items-center gap-1.5 bg-slate-800/90 border border-slate-700 px-2.5 py-1 rounded-xl shrink-0";
+            }
+        }
+
+        /**************************************************************
+         * 7. 3-STRIKE ANTI-CHEAT & PROCTORING ENGINE
+         **************************************************************/
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+            (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+        function requestExamFullscreen() {
+            if (isIOS) return;
+            const elem = document.documentElement;
+            try {
+                if (elem.requestFullscreen) {
+                    elem.requestFullscreen().catch(() => {});
+                } else if (elem.webkitRequestFullscreen) {
+                    elem.webkitRequestFullscreen();
+                }
+            } catch (e) {}
+        }
+
+        function persistExamState() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify({
+                    studentName: state.studentName,
+                    studentGroup: state.studentGroup,
+                    examActive: state.examActive,
+                    examFinished: state.examFinished,
+                    disqualified: state.disqualified,
+                    answers: state.answers,
+                    remainingSeconds: state.remainingSeconds,
+                    violations: state.violations,
+                    violationLogs: state.violationLogs,
+                    finishReason: state.finishReason
+                }));
+            } catch (e) {}
+        }
+
+        function recordViolation(reasonText) {
+            if (!state.examActive || state.examFinished) return;
+
+            // Immediately apply security blackout curtain so screenshots capture nothing
+            document.body.classList.add("security-blur");
+
+            const now = Date.now();
+            // 1.5s smart debounce so blur + visibilitychange firing together count as 1 strike
+            if (now - state.lastViolationTimestamp < 1500) return;
+            state.lastViolationTimestamp = now;
+
+            state.violations += 1;
+            const timeStr = new Date().toLocaleTimeString("uz-UZ");
+            state.violationLogs.push(`${timeStr} — ${reasonText} (Ogohlantirish ${state.violations}/${MAX_VIOLATIONS})`);
+
+            updateShieldsHeader();
+            persistExamState();
+
+            if (state.violations >= MAX_VIOLATIONS) {
+                playWarningSound(true);
+                state.disqualified = true;
+                elModalViolation.classList.add("hidden");
+                document.body.classList.remove("security-blur");
+                finishExam("CHETLATILDI (3/3 Qoidabuzarlik: Ekran tark etildi yoki skrinshot olindi)");
+                return;
+            }
+
+            playWarningSound(false);
+
+            // Populate Strike 1 or Strike 2 Warning Modal
+            const remaining = MAX_VIOLATIONS - state.violations;
+            elModalStrikePill.textContent = `OGOHLANTIRISH ${state.violations} / ${MAX_VIOLATIONS}`;
+            elModalViolationReason.textContent = reasonText;
+            elModalViolationCounter.textContent = `Qolgan urinishlar: ${remaining} ta`;
+
+            let modalShields = "";
+            for (let i = 0; i < MAX_VIOLATIONS; i++) {
+                if (i < remaining) {
+                    modalShields += `<span class="text-2xl">🛡️</span>`;
+                } else {
+                    modalShields += `<span class="text-2xl opacity-40">💥</span>`;
+                }
+            }
+            elModalShieldsVisual.innerHTML = modalShields;
+            elModalViolation.classList.remove("hidden");
+        }
+
+        // 1) Detect Tab Switching / App Minimizing (iOS Safari, Telegram in-app browser, Android Chrome)
+        document.addEventListener("visibilitychange", () => {
+            if (!state.examActive || state.examFinished) return;
+            if (document.hidden) {
+                document.body.classList.add("security-blur");
+                recordViolation("Imtihon oynasidan chiqish yoki boshqa ilovaga o'tish aniqlandi");
+            }
+        });
+
+        // 2) Detect iOS Page Hide / App Switcher gesture
+        window.addEventListener("pagehide", () => {
+            if (!state.examActive || state.examFinished) return;
+            document.body.classList.add("security-blur");
+            recordViolation("Ekran yopildi yoki boshqa oynaga o'tildi");
+        });
+
+        // 3) Instant Window Blur (Pulling down iOS/Android Control Center, Notification Shade, Split Screen, Screenshot overlay)
+        window.addEventListener("blur", () => {
+            if (!state.examActive || state.examFinished) return;
+            // Instant blackout on the exact millisecond blur occurs
+            document.body.classList.add("security-blur");
+            recordViolation("Ekran tark etildi, bildirishnoma pardasi tushirildi yoki skrinshotga urinish bo'ldi");
+        });
+
+        // 4) Block Context Menu, Long-Press, Copy, Cut, Paste, Drag/Drop
+        document.addEventListener("contextmenu", e => e.preventDefault());
+        ["copy", "cut", "paste", "drop", "dragstart"].forEach(evtName => {
+            document.addEventListener(evtName, e => {
+                if (state.examActive && !state.examFinished) {
+                    e.preventDefault();
+                    showToast("Nusxalash va joylashtirish (Copy/Paste) qat'iyan taqiqlangan!");
+                }
+            });
+        });
+
+        // 5) Anti-Screenshot & Shortcut Key Listeners (PrintScreen, Meta+Shift+3/4/5, Ctrl+P, Ctrl+S, Ctrl+C, Ctrl+V)
+        window.addEventListener("keydown", e => {
+            if (!state.examActive || state.examFinished) return;
+
+            const keyLower = (e.key || "").toLowerCase();
+            const isScreenshotShortcut =
+                e.key === "PrintScreen" ||
+                (e.metaKey && e.shiftKey && ["3", "4", "5", "s"].includes(keyLower)) ||
+                (e.ctrlKey && e.shiftKey && keyLower === "s") ||
+                ((e.ctrlKey || e.metaKey) && ["p", "s"].includes(keyLower));
+
+            const isCopyPasteShortcut = (e.ctrlKey || e.metaKey) && ["c", "v", "x"].includes(keyLower);
+
+            if (isCopyPasteShortcut) {
+                e.preventDefault();
+                showToast("Klaviaturadan nusxalash (Ctrl+C / Ctrl+V) o'chirilgan!");
+                return;
+            }
+
+            if (isScreenshotShortcut) {
+                e.preventDefault();
+                document.body.classList.add("security-blur");
+                recordViolation("Skrinshot olish yoki sahifani saqlash tugmasi bosildi");
+            }
+        });
+
+        window.addEventListener("keyup", e => {
+            if (!state.examActive || state.examFinished) return;
+            if (e.key === "PrintScreen") {
+                document.body.classList.add("security-blur");
+                recordViolation("Skrinshot (PrintScreen) tugmasi bosildi");
+            }
+        });
+
+        // Dismiss Warning Modal & Unblur Screen
+        elBtnReturnExam.addEventListener("click", () => {
+            elModalViolation.classList.add("hidden");
+            document.body.classList.remove("security-blur");
+            requestExamFullscreen();
+        });
+
+        /**************************************************************
+         * 8. EXAM NAVIGATION & UI RENDERING
+         **************************************************************/
+        function renderQuestionPills() {
+            elQuestionPills.innerHTML = "";
+            let answeredCount = 0;
+
+            EXAM_QUESTIONS.forEach((q, idx) => {
+                const hasAnswer = state.answers[idx].trim().length > 0;
+                if (hasAnswer) answeredCount++;
+
+                const btn = document.createElement("button");
+                btn.type = "button";
+                btn.textContent = idx + 1;
+
+                let baseClasses = "h-9 rounded-xl font-bold text-xs transition flex items-center justify-center border ";
+                if (idx === state.currentIndex) {
+                    baseClasses += "bg-indigo-600 text-white border-indigo-400 ring-2 ring-indigo-400/40";
+                } else if (hasAnswer) {
+                    baseClasses += "bg-emerald-950/80 text-emerald-300 border-emerald-700/70 hover:bg-emerald-900/70";
+                } else {
+                    baseClasses += "bg-slate-900/90 text-slate-400 border-slate-700 hover:bg-slate-700";
+                }
+
+                btn.className = baseClasses;
+                btn.addEventListener("click", () => {
+                    saveCurrentInput();
+                    state.currentIndex = idx;
+                    renderCurrentQuestion();
+                });
+
+                elQuestionPills.appendChild(btn);
+            });
+
+            elAnsweredCounter.textContent = `Javob yozildi: ${answeredCount} / ${EXAM_QUESTIONS.length}`;
+        }
+
+        function renderCurrentQuestion() {
+            const q = EXAM_QUESTIONS[state.currentIndex];
+            elQNumberBadge.textContent = `${state.currentIndex + 1}-SAVOL / ${EXAM_QUESTIONS.length}`;
+            elQTenseBadge.textContent = q.tense;
+            elQUzbekText.textContent = q.uzbek;
+            elQVocabHint.textContent = `Lug'at yordam: ${q.hint}`;
+            elAnswerInput.value = state.answers[state.currentIndex];
+
+            elBtnPrev.disabled = state.currentIndex === 0;
+
+            if (state.currentIndex === EXAM_QUESTIONS.length - 1) {
+                elBtnNext.classList.add("hidden");
+                elBtnFinishTrigger.classList.remove("hidden");
+                elBtnFinishTrigger.classList.add("flex");
+            } else {
+                elBtnNext.classList.remove("hidden");
+                elBtnFinishTrigger.classList.add("hidden");
+                elBtnFinishTrigger.classList.remove("flex");
+            }
+
+            renderQuestionPills();
+        }
+
+        function saveCurrentInput() {
+            state.answers[state.currentIndex] = elAnswerInput.value;
+            persistExamState();
+        }
+
+        elAnswerInput.addEventListener("input", () => {
+            saveCurrentInput();
+            renderQuestionPills();
+        });
+
+        elBtnPrev.addEventListener("click", () => {
+            if (state.currentIndex > 0) {
+                saveCurrentInput();
+                state.currentIndex--;
+                renderCurrentQuestion();
+            }
+        });
+
+        elBtnNext.addEventListener("click", () => {
+            if (state.currentIndex < EXAM_QUESTIONS.length - 1) {
+                saveCurrentInput();
+                state.currentIndex++;
+                renderCurrentQuestion();
+            }
+        });
+
+        /**************************************************************
+         * 9. TIMER LOGIC
+         **************************************************************/
+        function formatTime(sec) {
+            const m = Math.floor(sec / 60);
+            const s = sec % 60;
+            return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+        }
+
+        function startTimer() {
+            if (state.timerInterval) clearInterval(state.timerInterval);
+            state.timerInterval = setInterval(() => {
+                if (!state.examActive || state.examFinished) return;
+
+                state.remainingSeconds--;
+                elTimerDisplay.textContent = formatTime(state.remainingSeconds);
+
+                const pct = Math.max(0, (state.remainingSeconds / TOTAL_TIME_SECONDS) * 100);
+                elTimerProgress.style.width = `${pct}%`;
+
+                // Warning styling when under 2 minutes
+                if (state.remainingSeconds <= 120) {
+                    elTimerProgress.classList.remove("bg-indigo-500");
+                    elTimerProgress.classList.add("bg-rose-500");
+                    elTimerBadge.classList.add("border-rose-500", "bg-rose-950/80");
+                    elTimerDisplay.classList.add("text-rose-300", "animate-pulse");
+                }
+
+                if (state.remainingSeconds % 5 === 0) {
+                    persistExamState();
+                }
+
+                if (state.remainingSeconds <= 0) {
+                    finishExam("Berilgan vaqt (15 daqiqa) tugadi");
+                }
+            }, 1000);
+        }
+
+        /**************************************************************
+         * 10. START, FINISH & LOCALSTORAGE LOCK WORKFLOW
+         **************************************************************/
+        elStartForm.addEventListener("submit", e => {
+            e.preventDefault();
+            const nameVal = elNameInput.value.trim();
+            const groupVal = elGroupInput.value.trim();
+
+            if (nameVal.length < 3 || groupVal.length < 1) {
+                elStartError.classList.remove("hidden");
+                return;
+            }
+
+            initAudioContext();
+            elStartError.classList.add("hidden");
+            state.studentName = nameVal;
+            state.studentGroup = groupVal;
+            state.examActive = true;
+            state.examFinished = false;
+            state.disqualified = false;
+            state.violations = 0;
+            state.violationLogs = [];
+
+            // Request Fullscreen & Setup Security Watermark
+            requestExamFullscreen();
+            renderWatermark();
+            updateShieldsHeader();
+            persistExamState();
+
+            // Populate Header
+            elHeaderName.textContent = state.studentName;
+            elHeaderGroup.textContent = state.studentGroup;
+            elHeader.classList.remove("hidden");
+
+            // Switch Screen
+            elScreenStart.classList.add("hidden");
+            elScreenExam.classList.remove("hidden");
+
+            renderCurrentQuestion();
+            startTimer();
+        });
+
+        function openConfirmModal() {
+            saveCurrentInput();
+            const unanswered = state.answers.filter(a => a.trim().length === 0).length;
+            if (unanswered > 0) {
+                elConfirmText.textContent = `Diqqat! Sizda hali ${unanswered} ta gap tarjima qilinmagan. Baribir imtihonni yakunlaysizmi?`;
+            } else {
+                elConfirmText.textContent = "Barcha 10 ta gapga javob yozdingiz. Imtihonni yakunlab natijani ko'rasizmi?";
+            }
+            elModalConfirm.classList.remove("hidden");
+        }
+
+        elBtnFinishTrigger.addEventListener("click", openConfirmModal);
+        elBtnEarlySubmit.addEventListener("click", openConfirmModal);
+
+        elBtnCancelSubmit.addEventListener("click", () => {
+            elModalConfirm.classList.add("hidden");
+        });
+
+        elBtnConfirmSubmit.addEventListener("click", () => {
+            elModalConfirm.classList.add("hidden");
+            finishExam("O'quvchi o'zi topshirdi");
+        });
+
+        function finishExam(reason) {
+            if (state.examFinished) return;
+            saveCurrentInput();
+            state.examFinished = true;
+            state.examActive = false;
+            state.finishReason = reason;
+            persistExamState();
+
+            if (state.timerInterval) {
+                clearInterval(state.timerInterval);
+            }
+
+            // Exit Fullscreen gracefully if active
+            try {
+                if (document.fullscreenElement && document.exitFullscreen) {
+                    document.exitFullscreen().catch(() => {});
+                }
+            } catch (e) {}
+
+            elHeader.classList.add("hidden");
+            elScreenExam.classList.add("hidden");
+            elModalViolation.classList.add("hidden");
+            document.body.classList.remove("security-blur");
+            elScreenResult.classList.remove("hidden");
+
+            renderResultsScreen();
+        }
+
+        /**************************************************************
+         * 11. RESULTS, TEACHER REPORT & PIN RESET
+         **************************************************************/
+        function renderResultsScreen() {
+            let correctCount = 0;
+            const breakdownEl = document.getElementById("results-breakdown");
+            breakdownEl.innerHTML = "";
+
+            EXAM_QUESTIONS.forEach((q, idx) => {
+                const studentAns = (state.answers[idx] || "").trim();
+                const isCorrect = isAnswerCorrect(q, studentAns);
+                if (isCorrect) correctCount++;
+
+                const card = document.createElement("div");
+                card.className = `p-4 rounded-2xl border ${
+                    isCorrect
+                        ? "bg-emerald-950/30 border-emerald-700/60"
+                        : "bg-rose-950/30 border-rose-800/60"
+                }`;
+
+                card.innerHTML = `
+                    <div class="flex items-center justify-between gap-2 mb-1.5">
+                        <span class="text-xs font-bold text-slate-300">${q.tense}</span>
+                        <span class="text-[11px] font-extrabold px-2.5 py-0.5 rounded-lg ${
+                            isCorrect
+                                ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                                : "bg-rose-500/20 text-rose-300 border border-rose-500/30"
+                        }">
+                            ${isCorrect ? "✓ To'g'ri" : "✗ Xato yoki Bo'sh"}
+                        </span>
+                    </div>
+                    <p class="text-xs text-slate-300 font-medium mb-2">${q.uzbek}</p>
+                    <div class="text-xs space-y-1 bg-slate-900/80 p-2.5 rounded-xl border border-slate-800">
+                        <p><span class="text-slate-400">O'quvchi javobi:</span> <strong class="${isCorrect ? 'text-emerald-300' : 'text-rose-300'}">${studentAns || "(Javob yozilmagan)"}</strong></p>
+                        <p><span class="text-slate-400">Namuna javob:</span> <strong class="text-indigo-300">${q.reference}</strong></p>
+                    </div>
+                `;
+                breakdownEl.appendChild(card);
+            });
+
+            const spentSeconds = Math.max(0, TOTAL_TIME_SECONDS - state.remainingSeconds);
+            const percent = Math.round((correctCount / EXAM_QUESTIONS.length) * 100);
+            const verifyCode = `UZ-${Math.random().toString(36).substring(2, 6).toUpperCase()}-${correctCount}${state.violations}`;
+
+            document.getElementById("res-name").textContent = state.studentName;
+            document.getElementById("res-group").textContent = state.studentGroup;
+            document.getElementById("res-score").textContent = `${correctCount} / ${EXAM_QUESTIONS.length}`;
+            document.getElementById("res-percent").textContent = `${percent}% natija`;
+            document.getElementById("res-time").textContent = formatTime(spentSeconds);
+            document.getElementById("res-violations").textContent = `${state.violations} / ${MAX_VIOLATIONS}`;
+            document.getElementById("res-security-code").textContent = `KOD: ${verifyCode}`;
+            document.getElementById("result-timestamp").textContent = `${new Date().toLocaleString("uz-UZ")} • ${state.finishReason}`;
+
+            const statusBadge = document.getElementById("result-status-badge");
+            if (state.violations >= MAX_VIOLATIONS || state.disqualified) {
+                statusBadge.className = "inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-wider mb-3 bg-rose-600 text-white shadow-lg shadow-rose-600/30";
+                statusBadge.textContent = "⛔ IMTIHONDAN CHETLATILDI (3/3 QOIDABUZARLIK)";
+            } else if (state.violations === 0) {
+                statusBadge.className = "inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-extrabold uppercase tracking-wider mb-3 bg-emerald-500/20 text-emerald-300 border border-emerald-500/40";
+                statusBadge.textContent = "✓ MUVAFFAQIYATLI YAKUNLANDI (0/3 Qoidabuzarlik)";
+            } else {
+                statusBadge.className = "inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-extrabold uppercase tracking-wider mb-3 bg-amber-500/20 text-amber-300 border border-amber-500/40";
+                statusBadge.textContent = `⚠ OGOHLANTIRISH BILAN YAKUNLANDI (${state.violations}/3 Qoidabuzarlik)`;
+            }
+
+            const logBox = document.getElementById("violation-log-box");
+            const logList = document.getElementById("violation-log-list");
+            if (state.violationLogs.length > 0) {
+                logBox.classList.remove("hidden");
+                logList.innerHTML = state.violationLogs.map(item => `<li>• ${item}</li>`).join("");
+            } else {
+                logBox.classList.add("hidden");
+            }
+
+            // Build formatted teacher report text
+            function buildTeacherReportText() {
+                const statusStr = (state.violations >= MAX_VIOLATIONS || state.disqualified)
+                    ? "⛔ CHETLATILDI (3/3 Qoidabuzarlik)"
+                    : "✓ Muvaffaqiyatli yakunlandi";
+
+                let reportLines = [
+                    "📋 INGLIZ TILI IMTIHON HISOBOTI",
+                    `📌 Holati: ${statusStr}`,
+                    `👤 O'quvchi: ${state.studentName}`,
+                    `👥 Guruh: ${state.studentGroup}`,
+                    `✅ To'g'ri javoblar: ${correctCount}/${EXAM_QUESTIONS.length} (${percent}%)`,
+                    `⏱ Sarflangan vaqt: ${formatTime(spentSeconds)}`,
+                    `🛡 Qoidabuzarliklar: ${state.violations}/3 marta`,
+                    `🔐 Tekshiruv kodi: ${verifyCode}`
+                ];
+
+                if (state.violationLogs.length > 0) {
+                    reportLines.push("--------------------------------");
+                    reportLines.push("🚨 XAVFSIZLIK JURNALI:");
+                    state.violationLogs.forEach(l => reportLines.push(`  • ${l}`));
+                }
+
+                reportLines.push("--------------------------------");
+                EXAM_QUESTIONS.forEach((q, i) => {
+                    const ans = (state.answers[i] || "").trim() || "(Yozilmagan)";
+                    const ok = isAnswerCorrect(q, ans) ? "✅" : "❌";
+                    reportLines.push(`${q.tense} ${ok}`);
+                    reportLines.push(`   O'quvchi: ${ans}`);
+                    reportLines.push(`   Namuna: ${q.reference}`);
+                });
+
+                return reportLines.join("\n");
+            }
+
+            // Copy Report Handler for Teacher
+            function copyReportToClipboard(reportText) {
+                const tempArea = document.createElement("textarea");
+                tempArea.value = reportText;
+                tempArea.style.position = "fixed";
+                tempArea.style.opacity = "0";
+                document.body.appendChild(tempArea);
+                tempArea.focus();
+                tempArea.select();
+                tempArea.setSelectionRange(0, 99999);
+                try {
+                    document.execCommand("copy");
+                } catch (err) {}
+                document.body.removeChild(tempArea);
+
+                document.getElementById("copy-btn-text").textContent = "✓ Natija Nusxalandi (Telegramga tashlang)";
+                showToast("Hisobot nusxalandi! Telegram orqali ustozga yuboring.");
+            }
+
+            document.getElementById("btn-copy-report").onclick = () => {
+                copyReportToClipboard(buildTeacherReportText());
+            };
+
+            document.getElementById("btn-share-report").onclick = async () => {
+                const text = buildTeacherReportText();
+                if (navigator.share) {
+                    try {
+                        await navigator.share({
+                            title: `Imtihon Natijasi - ${state.studentName}`,
+                            text: text
+                        });
+                    } catch (err) {
+                        copyReportToClipboard(text);
+                    }
+                } else {
+                    copyReportToClipboard(text);
+                }
+            };
+        }
+
+        // Teacher PIN Unlock Logic (PIN: 2026 or 0000)
+        const elBtnTeacherReset = document.getElementById("btn-teacher-reset");
+        const elTeacherPinBox = document.getElementById("teacher-pin-box");
+        const elTeacherPinInput = document.getElementById("teacher-pin-input");
+        const elBtnVerifyPin = document.getElementById("btn-verify-pin");
+
+        elBtnTeacherReset.addEventListener("click", () => {
+            elTeacherPinBox.classList.toggle("hidden");
+            if (!elTeacherPinBox.classList.contains("hidden")) {
+                elTeacherPinInput.focus();
+            }
+        });
+
+        elBtnVerifyPin.addEventListener("click", () => {
+            const pin = elTeacherPinInput.value.trim();
+            if (pin === "2026" || pin === "0000") {
+                try {
+                    localStorage.removeItem(STORAGE_KEY);
+                } catch (e) {}
+                location.reload();
+            } else {
+                showToast("Noto'g'ri PIN kod! (Ustoz PIN kodi: 2026)");
+                elTeacherPinInput.value = "";
+            }
+        });
+
+        // Restore locked state on page refresh so disqualified students cannot reload to restart
+        window.addEventListener("DOMContentLoaded", () => {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                if (!raw) return;
+                const saved = JSON.parse(raw);
+
+                if (saved && (saved.examFinished || saved.examActive)) {
+                    state.studentName = saved.studentName || "O'quvchi";
+                    state.studentGroup = saved.studentGroup || "Guruh";
+                    state.answers = Array.isArray(saved.answers) ? saved.answers : Array(EXAM_QUESTIONS.length).fill("");
+                    state.remainingSeconds = typeof saved.remainingSeconds === "number" ? saved.remainingSeconds : 0;
+                    state.violations = saved.violations || 0;
+                    state.violationLogs = Array.isArray(saved.violationLogs) ? saved.violationLogs : [];
+                    state.disqualified = Boolean(saved.disqualified);
+                    state.finishReason = saved.finishReason || "Sahifa yangilanganligi sababli yakunlandi";
+
+                    renderWatermark();
+
+                    // If they refreshed mid-exam, count page reload as a strike or resume locked result if already finished
+                    if (saved.examFinished) {
+                        state.examFinished = true;
+                        state.examActive = false;
+                        elScreenStart.classList.add("hidden");
+                        elScreenResult.classList.remove("hidden");
+                        renderResultsScreen();
+                    } else if (saved.examActive) {
+                        state.examActive = true;
+                        state.examFinished = false;
+                        elHeaderName.textContent = state.studentName;
+                        elHeaderGroup.textContent = state.studentGroup;
+                        elHeader.classList.remove("hidden");
+                        elScreenStart.classList.add("hidden");
+                        elScreenExam.classList.remove("hidden");
+                        updateShieldsHeader();
+                        renderCurrentQuestion();
+                        startTimer();
+                        recordViolation("Imtihon vaqtida sahifa yangilandi (Refresh)");
+                    }
+                }
+            } catch (e) {}
+        });
+    </script>
+</body>
+</html>
